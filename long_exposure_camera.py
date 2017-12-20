@@ -18,14 +18,15 @@ width = 1640
 height = 1232
 
 # time between images --- mins between images * seconds per minute = seconds between photos
-sleep_time = 5 * 60
+images_per_hour = 12
+
+# minutes between images (60/images/hour)  * (seconds per min) 
+sleep_time = (60 / images_per_hour) * 60
 
 # number of images in 24 hours --- (24 hours * 60 mins/hour * 60 secs/min)/sleep_time in seconds
 n_images = int(24 * 60 * 60 / sleep_time) * 2 
 
-# seconds between images
-# seconds per hour ( 60 * 60 ) / images per hour
-sleep_time = (60 * 60) // 15
+
 
 
 # documentation for RaspiCam
@@ -47,12 +48,13 @@ sleep_time = (60 * 60) // 15
 
 
 
-ss = 33500 # starting value for first loop
 min_ss = 100
-max_ss = 1000000
+max_ss = 1000000 - 1
 
 
-ss = 50000
+ss = 33500 # starting value for first loop average lighting
+#ss = max_ss   # late night photos
+
 for i in range(n_images):
 
     # check brightness of last image
@@ -62,22 +64,26 @@ for i in range(n_images):
         g = np.median(im[:,:,1])
         b = np.median(im[:,:,2])
         avg = (r + b + g) // 3
+
+        # scaled percent to adjust current shutter setting
+        ds = (100. - avg) / 500.  
+        ss += (ss * ds)
         
-        ss = int( ss + (100 - avg) * 10000 )
         print('trying shutter speed... %d' % (ss))
         if ss < min_ss: ss = 100
         if ss > max_ss: ss = max_ss
 
         # on NoIR camera green is the best indicator of brightness
-        print(' %s g %d r %d, b %d, last shutter speed %d' % (file_name, g,r,b, ss))
+        print(' %s g %d r %d, b %d, last shutter speed %f, ds %f' % (file_name, g, r, b, ss, ds))
 
     
     file_name = "image_%05d.jpg" % i
 
-    # turning off awb turns images to black and green only
+    # Turning off awb turns images to black and green only
     #command = 'raspistill -n -o %s -awb off -ss %d' % (file_name, ss)
     command = 'raspistill -n -o %s -ss %d' % (file_name, ss)
     
     
     os.system(command)
     time.sleep(sleep_time)
+
